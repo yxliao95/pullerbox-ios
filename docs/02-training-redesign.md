@@ -478,6 +478,7 @@ pauseDuration
 - 按动作统计的完成组数。
 - 按动作统计的未完成组数。
 - 按动作统计的完成 reps。
+- 按动作统计的组间休息时间。
 
 `forceDevice` 额外显示：
 
@@ -552,6 +553,7 @@ ActionSummary
   completedSets
   partialSets
   completedReps
+  groupRestSeconds[]
   peakForce?        // forceDevice only
 
 TrainingSummary

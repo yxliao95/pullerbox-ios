@@ -5,7 +5,12 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            TrainingHomeView()
+            TrainingHomeView(viewModel: TrainingHomeViewModel(
+                actionRepository: container.actionLibraryRepository,
+                planRepository: container.trainingPlanRepository,
+                recordRepository: container.trainingRecordRepository,
+                forceDeviceRepository: container.forceDeviceRepository
+            ))
             .tabItem {
                 Label("训练", systemImage: "timer")
             }

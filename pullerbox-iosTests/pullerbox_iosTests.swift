@@ -57,4 +57,74 @@ struct pullerbox_iosTests {
         #expect(records.allSatisfy { !$0.statistics.cycleStatistics.isEmpty })
     }
 
+    @Test func timedRepsDurationExcludesTrailingRest() async throws {
+        let action = Action(
+            id: "hang",
+            name: "指力悬挂",
+            kind: .timedReps(TimedRepsAction(
+                targetReps: 3,
+                workSecondsPerRep: 12,
+                restSecondsBetweenReps: 4
+            ))
+        )
+
+        #expect(action.estimatedDurationSeconds == 44)
+        #expect(action.isValid)
+    }
+
+    @Test func planDurationKeepsConsecutiveIntervalsAndSkipsTrailingGroupRest() async throws {
+        let action = Action(
+            id: "left-hang",
+            name: "左手悬挂",
+            kind: .timedReps(TimedRepsAction(
+                targetReps: 2,
+                workSecondsPerRep: 10,
+                restSecondsBetweenReps: 5
+            ))
+        )
+        let actionsById = [action.id: action]
+        let group = ActionGroup(
+            id: "group-1",
+            title: "左右手",
+            steps: [
+                .interval(IntervalStep(id: "prepare", title: "准备", durationSeconds: 10)),
+                .interval(IntervalStep(id: "chalk", title: "上镁粉", durationSeconds: 5)),
+                .action(ActionStep(id: "action-step-1", actionId: action.id))
+            ],
+            groupRestSeconds: 30,
+            cycles: 3
+        )
+        let plan = TrainingPlan(
+            id: "plan-1",
+            name: "最大指力",
+            steps: [.actionGroup(group)]
+        )
+
+        #expect(group.estimatedDurationSeconds(actionsById: actionsById) == 180)
+        #expect(plan.estimatedDurationSeconds(actionsById: actionsById) == 180)
+        #expect(plan.isValid(actionsById: actionsById))
+    }
+
+    @Test func planWithMissingActionIsInvalidAndHasNoEstimatedDuration() async throws {
+        let group = ActionGroup(
+            id: "group-1",
+            title: nil,
+            steps: [.action(ActionStep(id: "action-step-1", actionId: "missing-action"))],
+            groupRestSeconds: 0,
+            cycles: 1
+        )
+        let plan = TrainingPlan(
+            id: "plan-1",
+            name: "缺失动作计划",
+            steps: [.actionGroup(group)]
+        )
+
+        let issues = plan.validationIssues(actionsById: [:])
+
+        #expect(plan.estimatedDurationSeconds(actionsById: [:]) == nil)
+        #expect(!issues.isEmpty)
+        #expect(issues.contains(.missingValidAction))
+        #expect(issues.contains(.missingAction(actionStepId: "action-step-1", actionId: "missing-action")))
+    }
+
 }
