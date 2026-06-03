@@ -1,6 +1,7 @@
 import Charts
 import SwiftUI
 
+// TODO(cleanup): Legacy records feature retained during redesign; remove after the new design replaces it.
 struct RecordsHomeView: View {
     @StateObject var viewModel: RecordsHomeViewModel
     @State private var selectedTab: RecordsTab = .history
@@ -20,7 +21,7 @@ struct RecordsHomeView: View {
                     MetricVisibilityView(viewModel: viewModel)
                 }
             }
-            .navigationTitle("记录")
+            .navigationTitle("旧记录")
             .toolbar {
                 ToolbarItem {
                     Picker("视图", selection: $selectedTab) {

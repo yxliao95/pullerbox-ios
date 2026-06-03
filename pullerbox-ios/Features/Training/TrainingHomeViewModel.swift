@@ -2,6 +2,7 @@ import Combine
 import Foundation
 
 @MainActor
+// TODO(cleanup): Legacy training state retained during redesign; remove with LegacyTrainingHomeView.
 final class TrainingHomeViewModel: ObservableObject {
     @Published var plans: [TrainingPlan] = TrainingPlanLibrarySnapshot.default.plans
     @Published var selectedPlanId: String? = TrainingPlan.default.id

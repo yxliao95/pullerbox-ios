@@ -5,12 +5,18 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            TrainingHomeView(viewModel: TrainingHomeViewModel(
+            TrainingHomeView()
+            .tabItem {
+                Label("训练", systemImage: "timer")
+            }
+
+            // TODO(cleanup): Existing feature entry points are retained during the redesign and should be removed after the new design replaces them.
+            LegacyTrainingHomeView(viewModel: TrainingHomeViewModel(
                 planRepository: container.trainingPlanRepository,
                 forceDeviceRepository: container.forceDeviceRepository
             ))
             .tabItem {
-                Label("训练", systemImage: "timer")
+                Label("旧训练页", systemImage: "timer")
             }
 
             RecordsHomeView(viewModel: RecordsHomeViewModel(
@@ -20,7 +26,7 @@ struct RootView: View {
                 randomSource: container.randomSource
             ))
             .tabItem {
-                Label("记录", systemImage: "chart.bar")
+                Label("旧记录", systemImage: "chart.bar")
             }
         }
     }
