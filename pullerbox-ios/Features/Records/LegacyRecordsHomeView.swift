@@ -2,9 +2,9 @@ import Charts
 import SwiftUI
 
 // TODO(cleanup): Legacy records feature retained during redesign; remove after the new design replaces it.
-struct RecordsHomeView: View {
-    @StateObject var viewModel: RecordsHomeViewModel
-    @State private var selectedTab: RecordsTab = .history
+struct LegacyRecordsHomeView: View {
+    @StateObject var viewModel: LegacyRecordsHomeViewModel
+    @State private var selectedTab: LegacyRecordsTab = .history
     @State private var showClearConfirmation = false
 
     var body: some View {
@@ -16,16 +16,16 @@ struct RecordsHomeView: View {
                 case .calendar:
                     calendarView
                 case .compare:
-                    TrainingCompareView(viewModel: viewModel)
+                    LegacyTrainingCompareView(viewModel: viewModel)
                 case .metrics:
-                    MetricVisibilityView(viewModel: viewModel)
+                    LegacyMetricVisibilityView(viewModel: viewModel)
                 }
             }
             .navigationTitle("旧记录")
             .toolbar {
                 ToolbarItem {
                     Picker("视图", selection: $selectedTab) {
-                        ForEach(RecordsTab.allCases) { tab in
+                        ForEach(LegacyRecordsTab.allCases) { tab in
                             Label(tab.title, systemImage: tab.systemImage).tag(tab)
                         }
                     }
@@ -65,9 +65,9 @@ struct RecordsHomeView: View {
                 Section("计时训练") {
                     ForEach(viewModel.timedRecords) { record in
                         NavigationLink {
-                            TimedRecordDetailView(record: record, viewModel: viewModel)
+                            LegacyTimedRecordDetailView(record: record, viewModel: viewModel)
                         } label: {
-                            TimedRecordRow(record: record)
+                            LegacyTimedRecordRow(record: record)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -83,9 +83,9 @@ struct RecordsHomeView: View {
                 Section("自由训练") {
                     ForEach(viewModel.freeRecords) { record in
                         NavigationLink {
-                            FreeRecordDetailView(record: record, viewModel: viewModel)
+                            LegacyFreeRecordDetailView(record: record, viewModel: viewModel)
                         } label: {
-                            FreeRecordRow(record: record)
+                            LegacyFreeRecordRow(record: record)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -111,16 +111,16 @@ struct RecordsHomeView: View {
                 }
                 ForEach(viewModel.selectedDateTimedRecords) { record in
                     NavigationLink {
-                        TimedRecordDetailView(record: record, viewModel: viewModel)
+                        LegacyTimedRecordDetailView(record: record, viewModel: viewModel)
                     } label: {
-                        TimedRecordRow(record: record)
+                        LegacyTimedRecordRow(record: record)
                     }
                 }
                 ForEach(viewModel.selectedDateFreeRecords) { record in
                     NavigationLink {
-                        FreeRecordDetailView(record: record, viewModel: viewModel)
+                        LegacyFreeRecordDetailView(record: record, viewModel: viewModel)
                     } label: {
-                        FreeRecordRow(record: record)
+                        LegacyFreeRecordRow(record: record)
                     }
                 }
             }
@@ -135,7 +135,7 @@ struct RecordsHomeView: View {
     }
 }
 
-private enum RecordsTab: String, CaseIterable, Identifiable {
+private enum LegacyRecordsTab: String, CaseIterable, Identifiable {
     case history
     case calendar
     case compare
@@ -162,8 +162,8 @@ private enum RecordsTab: String, CaseIterable, Identifiable {
     }
 }
 
-private struct TimedRecordRow: View {
-    let record: TrainingRecord
+private struct LegacyTimedRecordRow: View {
+    let record: LegacyTrainingRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -181,8 +181,8 @@ private struct TimedRecordRow: View {
     }
 }
 
-private struct FreeRecordRow: View {
-    let record: FreeTrainingRecord
+private struct LegacyFreeRecordRow: View {
+    let record: LegacyFreeTrainingRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -200,21 +200,21 @@ private struct FreeRecordRow: View {
     }
 }
 
-struct TimedRecordDetailView: View {
-    let record: TrainingRecord
-    @ObservedObject var viewModel: RecordsHomeViewModel
-    @State private var barMetric: TimedBarMetric = .averageStrength
+struct LegacyTimedRecordDetailView: View {
+    let record: LegacyTrainingRecord
+    @ObservedObject var viewModel: LegacyRecordsHomeViewModel
+    @State private var barMetric: LegacyTimedBarMetric = .averageStrength
 
     var body: some View {
         List {
             Section("摘要") {
-                ForEach(MetricDefinitions.timed.filter { viewModel.metricVisibility.visibleTimedMetrics.contains($0.metric) }) { definition in
+                ForEach(LegacyMetricDefinitions.timed.filter { viewModel.metricVisibility.visibleTimedMetrics.contains($0.metric) }) { definition in
                     LabeledContent(definition.label, value: viewModel.value(for: definition.metric, record: record))
                 }
             }
             Section("循环") {
                 Picker("柱状指标", selection: $barMetric) {
-                    ForEach(TimedBarMetric.allCases) { metric in
+                    ForEach(LegacyTimedBarMetric.allCases) { metric in
                         Text(metric.label).tag(metric)
                     }
                 }
@@ -245,7 +245,7 @@ struct TimedRecordDetailView: View {
         .navigationTitle(record.planName)
     }
 
-    private func barValue(_ stat: TrainingCycleStatistics) -> Double {
+    private func barValue(_ stat: LegacyTrainingCycleStatistics) -> Double {
         switch barMetric {
         case .averageStrength: stat.averageStrength
         case .maxStrength: stat.maxStrength
@@ -254,14 +254,14 @@ struct TimedRecordDetailView: View {
     }
 }
 
-struct FreeRecordDetailView: View {
-    let record: FreeTrainingRecord
-    @ObservedObject var viewModel: RecordsHomeViewModel
+struct LegacyFreeRecordDetailView: View {
+    let record: LegacyFreeTrainingRecord
+    @ObservedObject var viewModel: LegacyRecordsHomeViewModel
 
     var body: some View {
         List {
             Section("摘要") {
-                ForEach(MetricDefinitions.free.filter { viewModel.metricVisibility.visibleFreeMetrics.contains($0.metric) }) { definition in
+                ForEach(LegacyMetricDefinitions.free.filter { viewModel.metricVisibility.visibleFreeMetrics.contains($0.metric) }) { definition in
                     LabeledContent(definition.label, value: viewModel.value(for: definition.metric, record: record))
                 }
             }
@@ -284,8 +284,8 @@ struct FreeRecordDetailView: View {
     }
 }
 
-struct TrainingCompareView: View {
-    @ObservedObject var viewModel: RecordsHomeViewModel
+struct LegacyTrainingCompareView: View {
+    @ObservedObject var viewModel: LegacyRecordsHomeViewModel
 
     var body: some View {
         List {
@@ -293,7 +293,7 @@ struct TrainingCompareView: View {
                 DatePicker("开始", selection: $viewModel.compareStartDate, displayedComponents: .date)
                 DatePicker("结束", selection: $viewModel.compareEndDate, displayedComponents: .date)
                 Picker("指标", selection: $viewModel.compareMetric) {
-                    ForEach(MetricDefinitions.timed) { definition in
+                    ForEach(LegacyMetricDefinitions.timed) { definition in
                         Text(definition.shortLabel).tag(definition.metric)
                     }
                 }
@@ -332,13 +332,13 @@ struct TrainingCompareView: View {
     }
 }
 
-struct MetricVisibilityView: View {
-    @ObservedObject var viewModel: RecordsHomeViewModel
+struct LegacyMetricVisibilityView: View {
+    @ObservedObject var viewModel: LegacyRecordsHomeViewModel
 
     var body: some View {
         List {
             Section("计时训练指标") {
-                ForEach(MetricDefinitions.timed) { definition in
+                ForEach(LegacyMetricDefinitions.timed) { definition in
                     Toggle(definition.label, isOn: Binding(
                         get: { viewModel.metricVisibility.visibleTimedMetrics.contains(definition.metric) },
                         set: { _ in viewModel.toggleTimedMetric(definition.metric) }
@@ -346,7 +346,7 @@ struct MetricVisibilityView: View {
                 }
             }
             Section("自由训练指标") {
-                ForEach(MetricDefinitions.free) { definition in
+                ForEach(LegacyMetricDefinitions.free) { definition in
                     Toggle(definition.label, isOn: Binding(
                         get: { viewModel.metricVisibility.visibleFreeMetrics.contains(definition.metric) },
                         set: { _ in viewModel.toggleFreeMetric(definition.metric) }

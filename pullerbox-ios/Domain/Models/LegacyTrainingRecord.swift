@@ -1,18 +1,18 @@
 import Foundation
 
-struct TrainingSample: Identifiable, Codable, Equatable {
+struct LegacyTrainingSample: Identifiable, Codable, Equatable {
     var id: Double { time }
     let time: Double
     let value: Double
 }
 
-struct TrainingSampleGroup: Identifiable, Codable, Equatable {
+struct LegacyTrainingSampleGroup: Identifiable, Codable, Equatable {
     var id: Int { cycle }
     let cycle: Int
-    var samples: [TrainingSample]
+    var samples: [LegacyTrainingSample]
 }
 
-struct TrainingCycleStatistics: Identifiable, Codable, Equatable {
+struct LegacyTrainingCycleStatistics: Identifiable, Codable, Equatable {
     var id: Int { cycle }
     let cycle: Int
     let maxStrength: Double
@@ -26,7 +26,7 @@ struct TrainingCycleStatistics: Identifiable, Codable, Equatable {
     let lowTime: Double?
 }
 
-struct TrainingStatistics: Codable, Equatable {
+struct LegacyTrainingStatistics: Codable, Equatable {
     let maxStrengthSession: Double
     let maxControlStrengthSession: Double
     let controlCycles: Int
@@ -47,9 +47,9 @@ struct TrainingStatistics: Codable, Equatable {
     let fatigueDurationSeconds: Double
     let stableWindowSeconds: Double
     let stableWindowCv: Double
-    let cycleStatistics: [TrainingCycleStatistics]
+    let cycleStatistics: [LegacyTrainingCycleStatistics]
 
-    static let empty = TrainingStatistics(
+    static let empty = LegacyTrainingStatistics(
         maxStrengthSession: 0,
         maxControlStrengthSession: 0,
         controlCycles: 0,
@@ -61,30 +61,30 @@ struct TrainingStatistics: Codable, Equatable {
         dropMean: 0,
         dropMax: 0,
         dropStd: 0,
-        ruleVersion: TrainingStatisticsCalculator.ruleVersion,
-        quantile: TrainingStatisticsCalculator.quantileValue,
-        thresholdRatio: TrainingStatisticsCalculator.thresholdRatio,
-        enterDurations: TrainingStatisticsCalculator.enterDurations,
-        controlToleranceSeconds: TrainingStatisticsCalculator.controlToleranceSeconds,
-        fatigueThresholdRatio: TrainingStatisticsCalculator.fatigueThresholdRatio,
-        fatigueDurationSeconds: TrainingStatisticsCalculator.fatigueDurationSeconds,
-        stableWindowSeconds: TrainingStatisticsCalculator.stableWindowSeconds,
-        stableWindowCv: TrainingStatisticsCalculator.stableWindowCv,
+        ruleVersion: LegacyTrainingStatisticsCalculator.ruleVersion,
+        quantile: LegacyTrainingStatisticsCalculator.quantileValue,
+        thresholdRatio: LegacyTrainingStatisticsCalculator.thresholdRatio,
+        enterDurations: LegacyTrainingStatisticsCalculator.enterDurations,
+        controlToleranceSeconds: LegacyTrainingStatisticsCalculator.controlToleranceSeconds,
+        fatigueThresholdRatio: LegacyTrainingStatisticsCalculator.fatigueThresholdRatio,
+        fatigueDurationSeconds: LegacyTrainingStatisticsCalculator.fatigueDurationSeconds,
+        stableWindowSeconds: LegacyTrainingStatisticsCalculator.stableWindowSeconds,
+        stableWindowCv: LegacyTrainingStatisticsCalculator.stableWindowCv,
         cycleStatistics: []
     )
 }
 
-struct TrainingSummary: Codable, Equatable {
+struct LegacyTrainingSummary: Codable, Equatable {
     let planName: String
     let workSeconds: Int
     let restSeconds: Int
     let cycles: Int
     let totalSeconds: Int
-    let statistics: TrainingStatistics
+    let statistics: LegacyTrainingStatistics
     let hasStatistics: Bool
 }
 
-struct TrainingRecord: Identifiable, Codable, Equatable {
+struct LegacyTrainingRecord: Identifiable, Codable, Equatable {
     let id: String
     let planName: String
     let workSeconds: Int
@@ -92,10 +92,10 @@ struct TrainingRecord: Identifiable, Codable, Equatable {
     let cycles: Int
     let totalSeconds: Int
     let startedAt: Date
-    let groupedSamples: [TrainingSampleGroup]
-    let statistics: TrainingStatistics
+    let groupedSamples: [LegacyTrainingSampleGroup]
+    let statistics: LegacyTrainingStatistics
 }
 
-struct TrainingRecordSnapshot: Codable, Equatable {
-    var records: [TrainingRecord]
+struct LegacyTrainingRecordSnapshot: Codable, Equatable {
+    var records: [LegacyTrainingRecord]
 }

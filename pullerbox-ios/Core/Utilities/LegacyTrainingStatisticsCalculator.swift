@@ -1,6 +1,6 @@
 import Foundation
 
-struct TrainingStatisticsCalculator {
+struct LegacyTrainingStatisticsCalculator {
     static let ruleVersion = "v1"
     static let quantileValue = 0.99
     static let thresholdRatio = 0.95
@@ -12,10 +12,10 @@ struct TrainingStatisticsCalculator {
     static let stableWindowCv = 0.05
 
     func calculate(
-        groupedSamples: [TrainingSampleGroup],
+        groupedSamples: [LegacyTrainingSampleGroup],
         workSeconds: Int,
         sampleIntervalSeconds: Double = 0.05
-    ) -> TrainingStatistics {
+    ) -> LegacyTrainingStatistics {
         let requiredCounts = Self.enterDurations.map { samplesForDuration($0, sampleIntervalSeconds: sampleIntervalSeconds) }
         var snapshots: [CycleSnapshot] = []
 
@@ -167,7 +167,7 @@ struct TrainingStatisticsCalculator {
 
         let cycleStatistics = snapshots.indices.map { index in
             let snapshot = snapshots[index]
-            return TrainingCycleStatistics(
+            return LegacyTrainingCycleStatistics(
                 cycle: snapshot.cycle,
                 maxStrength: snapshot.maxStrength,
                 controlStrength: snapshot.controlStrength,
@@ -181,7 +181,7 @@ struct TrainingStatisticsCalculator {
             )
         }
 
-        return TrainingStatistics(
+        return LegacyTrainingStatistics(
             maxStrengthSession: maxStrengthSession,
             maxControlStrengthSession: maxControlStrengthSession,
             controlCycles: controlCycles,

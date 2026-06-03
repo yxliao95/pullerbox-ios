@@ -3,7 +3,7 @@ import SwiftUI
 // TODO(cleanup): Legacy training flow retained during redesign; remove after the new Training home is complete.
 struct LegacyTrainingHomeView: View {
     @EnvironmentObject private var container: AppContainer
-    @StateObject var viewModel: TrainingHomeViewModel
+    @StateObject var viewModel: LegacyTrainingHomeViewModel
     @State private var isPlanSelectorPresented = false
     @State private var isMonitorPresented = false
 
@@ -52,16 +52,16 @@ struct LegacyTrainingHomeView: View {
                 .background(.bar)
             }
             .sheet(isPresented: $isPlanSelectorPresented) {
-                PlanLibraryView(viewModel: viewModel)
+                LegacyPlanLibraryView(viewModel: viewModel)
             }
             .sheet(isPresented: $isMonitorPresented) {
-                TrainingMonitorView(viewModel: TrainingMonitorViewModel(
+                LegacyTrainingMonitorView(viewModel: LegacyTrainingMonitorViewModel(
                     plan: viewModel.selectedPlan,
                     isFreeTraining: viewModel.isFreeTraining,
                     isDeviceConnected: viewModel.isDeviceConnected,
                     forceDeviceRepository: container.forceDeviceRepository,
-                    recordRepository: container.trainingRecordRepository,
-                    statisticsCalculator: container.statisticsCalculator
+                    recordRepository: container.legacyTrainingRecordRepository,
+                    statisticsCalculator: container.legacyStatisticsCalculator
                 ))
             }
             .onAppear {
@@ -139,8 +139,8 @@ struct LegacyTrainingHomeView: View {
     }
 }
 
-struct PlanLibraryView: View {
-    @ObservedObject var viewModel: TrainingHomeViewModel
+struct LegacyPlanLibraryView: View {
+    @ObservedObject var viewModel: LegacyTrainingHomeViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

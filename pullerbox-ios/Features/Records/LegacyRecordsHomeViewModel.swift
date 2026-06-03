@@ -2,27 +2,27 @@ import Combine
 import Foundation
 
 @MainActor
-final class RecordsHomeViewModel: ObservableObject {
-    @Published var timedRecords: [TrainingRecord] = []
-    @Published var freeRecords: [FreeTrainingRecord] = []
-    @Published var metricVisibility: MetricVisibilitySnapshot = .default
+final class LegacyRecordsHomeViewModel: ObservableObject {
+    @Published var timedRecords: [LegacyTrainingRecord] = []
+    @Published var freeRecords: [LegacyFreeTrainingRecord] = []
+    @Published var metricVisibility: LegacyMetricVisibilitySnapshot = .default
     @Published var selectedDate = Date()
     @Published var compareStartDate = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
     @Published var compareEndDate = Date()
-    @Published var compareMetric: TimedSummaryMetric = .maxStrength
+    @Published var compareMetric: LegacyTimedSummaryMetric = .maxStrength
     @Published var compareLeftPlanName: String?
     @Published var compareRightPlanName: String?
     @Published var isLoaded = false
 
-    private let recordRepository: TrainingRecordRepositoryProtocol
-    private let settingsRepository: AppSettingsRepositoryProtocol
-    private let statisticsCalculator: TrainingStatisticsCalculator
+    private let recordRepository: LegacyTrainingRecordRepositoryProtocol
+    private let settingsRepository: LegacyAppSettingsRepositoryProtocol
+    private let statisticsCalculator: LegacyTrainingStatisticsCalculator
     private let randomSource: RandomSource
 
     init(
-        recordRepository: TrainingRecordRepositoryProtocol,
-        settingsRepository: AppSettingsRepositoryProtocol,
-        statisticsCalculator: TrainingStatisticsCalculator,
+        recordRepository: LegacyTrainingRecordRepositoryProtocol,
+        settingsRepository: LegacyAppSettingsRepositoryProtocol,
+        statisticsCalculator: LegacyTrainingStatisticsCalculator,
         randomSource: RandomSource
     ) {
         self.recordRepository = recordRepository
@@ -42,18 +42,18 @@ final class RecordsHomeViewModel: ObservableObject {
         return Set(timed + free)
     }
 
-    var selectedDateTimedRecords: [TrainingRecord] {
+    var selectedDateTimedRecords: [LegacyTrainingRecord] {
         records(on: selectedDate, records: timedRecords)
     }
 
-    var selectedDateFreeRecords: [FreeTrainingRecord] {
+    var selectedDateFreeRecords: [LegacyFreeTrainingRecord] {
         records(on: selectedDate, records: freeRecords)
     }
 
-    var compareResult: TrainingCompareResult {
+    var compareResult: LegacyTrainingCompareResult {
         let left = buildMetricStats(planName: compareLeftPlanName)
         let right = buildMetricStats(planName: compareRightPlanName)
-        return TrainingCompareResult(
+        return LegacyTrainingCompareResult(
             left: left,
             right: right,
             globalMaxValue: max(left.maxValue ?? 0, right.maxValue ?? 0),
@@ -73,12 +73,12 @@ final class RecordsHomeViewModel: ObservableObject {
         }
     }
 
-    func deleteTimedRecord(_ record: TrainingRecord) {
+    func deleteTimedRecord(_ record: LegacyTrainingRecord) {
         timedRecords.removeAll { $0.id == record.id }
         persistTimed()
     }
 
-    func deleteFreeRecord(_ record: FreeTrainingRecord) {
+    func deleteFreeRecord(_ record: LegacyFreeTrainingRecord) {
         freeRecords.removeAll { $0.id == record.id }
         persistFree()
     }
@@ -91,7 +91,7 @@ final class RecordsHomeViewModel: ObservableObject {
     }
 
     func buildRecordsForSelectedDate() {
-        let builder = TrainingRecordSeedBuilder(
+        let builder = LegacyTrainingRecordSeedBuilder(
             calculator: statisticsCalculator,
             randomSource: randomSource,
             sampleIntervalSeconds: 0.05,
@@ -109,7 +109,7 @@ final class RecordsHomeViewModel: ObservableObject {
         persistTimed()
     }
 
-    func toggleTimedMetric(_ metric: TimedSummaryMetric) {
+    func toggleTimedMetric(_ metric: LegacyTimedSummaryMetric) {
         if metricVisibility.visibleTimedMetrics.contains(metric) {
             metricVisibility.visibleTimedMetrics.remove(metric)
         } else {
@@ -118,7 +118,7 @@ final class RecordsHomeViewModel: ObservableObject {
         persistMetricVisibility()
     }
 
-    func toggleFreeMetric(_ metric: FreeSummaryMetric) {
+    func toggleFreeMetric(_ metric: LegacyFreeSummaryMetric) {
         if metricVisibility.visibleFreeMetrics.contains(metric) {
             metricVisibility.visibleFreeMetrics.remove(metric)
         } else {
@@ -127,7 +127,7 @@ final class RecordsHomeViewModel: ObservableObject {
         persistMetricVisibility()
     }
 
-    func value(for metric: TimedSummaryMetric, record: TrainingRecord) -> String {
+    func value(for metric: LegacyTimedSummaryMetric, record: LegacyTrainingRecord) -> String {
         switch metric {
         case .maxStrength:
             return Formatters.strength(record.statistics.maxStrengthSession)
@@ -148,7 +148,7 @@ final class RecordsHomeViewModel: ObservableObject {
         }
     }
 
-    func value(for metric: FreeSummaryMetric, record: FreeTrainingRecord) -> String {
+    func value(for metric: LegacyFreeSummaryMetric, record: LegacyFreeTrainingRecord) -> String {
         switch metric {
         case .totalDuration:
             return Formatters.duration(record.totalSeconds)
@@ -167,7 +167,7 @@ final class RecordsHomeViewModel: ObservableObject {
         }
     }
 
-    func metricValue(_ record: TrainingRecord, metric: TimedSummaryMetric) -> Double? {
+    func metricValue(_ record: LegacyTrainingRecord, metric: LegacyTimedSummaryMetric) -> Double? {
         guard !record.groupedSamples.isEmpty else { return nil }
         switch metric {
         case .maxStrength:
@@ -192,9 +192,9 @@ final class RecordsHomeViewModel: ObservableObject {
     private func records<T>(on date: Date, records: [T]) -> [T] where T: Identifiable {
         records.filter { record in
             let recordDate: Date
-            if let record = record as? TrainingRecord {
+            if let record = record as? LegacyTrainingRecord {
                 recordDate = record.startedAt
-            } else if let record = record as? FreeTrainingRecord {
+            } else if let record = record as? LegacyFreeTrainingRecord {
                 recordDate = record.startedAt
             } else {
                 return false
@@ -203,7 +203,7 @@ final class RecordsHomeViewModel: ObservableObject {
         }
     }
 
-    private func buildMetricStats(planName: String?) -> TrainingCompareMetricStats {
+    private func buildMetricStats(planName: String?) -> LegacyTrainingCompareMetricStats {
         guard let planName else { return .empty }
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: compareStartDate)
@@ -215,7 +215,7 @@ final class RecordsHomeViewModel: ObservableObject {
             }
             .sorted { $0.startedAt < $1.startedAt }
         let values = matched.compactMap { metricValue($0, metric: compareMetric) }
-        return TrainingCompareMetricStats(
+        return LegacyTrainingCompareMetricStats(
             maxValue: values.max(),
             minValue: values.min(),
             lastValue: matched.last.flatMap { metricValue($0, metric: compareMetric) },
@@ -255,7 +255,7 @@ final class RecordsHomeViewModel: ObservableObject {
     }
 }
 
-struct TrainingCompareMetricStats {
+struct LegacyTrainingCompareMetricStats {
     let maxValue: Double?
     let minValue: Double?
     let lastValue: Double?
@@ -263,7 +263,7 @@ struct TrainingCompareMetricStats {
     let recordCount: Int
     let values: [Double]
 
-    static let empty = TrainingCompareMetricStats(
+    static let empty = LegacyTrainingCompareMetricStats(
         maxValue: nil,
         minValue: nil,
         lastValue: nil,
@@ -273,9 +273,9 @@ struct TrainingCompareMetricStats {
     )
 }
 
-struct TrainingCompareResult {
-    let left: TrainingCompareMetricStats
-    let right: TrainingCompareMetricStats
+struct LegacyTrainingCompareResult {
+    let left: LegacyTrainingCompareMetricStats
+    let right: LegacyTrainingCompareMetricStats
     let globalMaxValue: Double
     let globalMinValue: Double
 }

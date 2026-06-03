@@ -3,24 +3,24 @@ import Foundation
 
 @MainActor
 // TODO(cleanup): Legacy training state retained during redesign; remove with LegacyTrainingHomeView.
-final class TrainingHomeViewModel: ObservableObject {
-    @Published var plans: [TrainingPlan] = TrainingPlanLibrarySnapshot.default.plans
-    @Published var selectedPlanId: String? = TrainingPlan.default.id
+final class LegacyTrainingHomeViewModel: ObservableObject {
+    @Published var plans: [LegacyTrainingPlan] = LegacyTrainingPlanLibrarySnapshot.default.plans
+    @Published var selectedPlanId: String? = LegacyTrainingPlan.default.id
     @Published var isFreeTraining = false
     @Published var isEditingPlanLibrary = false
     @Published var selectedPlanIds: Set<String> = []
     @Published var isLoaded = false
     @Published var isDeviceConnected = false
 
-    private let planRepository: TrainingPlanRepositoryProtocol
+    private let planRepository: LegacyTrainingPlanRepositoryProtocol
     private let forceDeviceRepository: ForceDeviceRepositoryProtocol
 
-    init(planRepository: TrainingPlanRepositoryProtocol, forceDeviceRepository: ForceDeviceRepositoryProtocol) {
+    init(planRepository: LegacyTrainingPlanRepositoryProtocol, forceDeviceRepository: ForceDeviceRepositoryProtocol) {
         self.planRepository = planRepository
         self.forceDeviceRepository = forceDeviceRepository
     }
 
-    var selectedPlan: TrainingPlan {
+    var selectedPlan: LegacyTrainingPlan {
         plans.first(where: { $0.id == selectedPlanId }) ?? plans.first ?? .default
     }
 
@@ -29,7 +29,7 @@ final class TrainingHomeViewModel: ObservableObject {
         isLoaded = true
         Task {
             let snapshot = await planRepository.loadLibrary()
-            plans = snapshot.plans.isEmpty ? TrainingPlanLibrarySnapshot.default.plans : snapshot.plans
+            plans = snapshot.plans.isEmpty ? LegacyTrainingPlanLibrarySnapshot.default.plans : snapshot.plans
             selectedPlanId = plans.contains(where: { $0.id == snapshot.selectedPlanId }) ? snapshot.selectedPlanId : plans.first?.id
             isFreeTraining = snapshot.isFreeTraining
         }
@@ -49,14 +49,14 @@ final class TrainingHomeViewModel: ObservableObject {
         persist()
     }
 
-    func selectPlan(_ plan: TrainingPlan) {
+    func selectPlan(_ plan: LegacyTrainingPlan) {
         selectedPlanId = plan.id
         isFreeTraining = false
         persist()
     }
 
     func addPlan() {
-        let plan = TrainingPlan(
+        let plan = LegacyTrainingPlan(
             id: "plan-\(Date().timeIntervalSince1970)",
             name: "默认",
             workSeconds: 7,
@@ -77,10 +77,10 @@ final class TrainingHomeViewModel: ObservableObject {
         persist()
     }
 
-    func deletePlan(_ plan: TrainingPlan) {
+    func deletePlan(_ plan: LegacyTrainingPlan) {
         plans.removeAll { $0.id == plan.id }
         if plans.isEmpty {
-            plans = [TrainingPlan.default]
+            plans = [LegacyTrainingPlan.default]
         }
         if !plans.contains(where: { $0.id == selectedPlanId }) {
             selectedPlanId = plans.first?.id
@@ -92,7 +92,7 @@ final class TrainingHomeViewModel: ObservableObject {
         plans.removeAll { selectedPlanIds.contains($0.id) }
         selectedPlanIds = []
         if plans.isEmpty {
-            plans = [TrainingPlan.default]
+            plans = [LegacyTrainingPlan.default]
         }
         if !plans.contains(where: { $0.id == selectedPlanId }) {
             selectedPlanId = plans.first?.id
@@ -114,7 +114,7 @@ final class TrainingHomeViewModel: ObservableObject {
     }
 
     private func persist() {
-        let snapshot = TrainingPlanLibrarySnapshot(plans: plans, selectedPlanId: selectedPlanId, isFreeTraining: isFreeTraining)
+        let snapshot = LegacyTrainingPlanLibrarySnapshot(plans: plans, selectedPlanId: selectedPlanId, isFreeTraining: isFreeTraining)
         Task {
             await planRepository.saveLibrary(snapshot)
         }

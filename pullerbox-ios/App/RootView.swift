@@ -11,18 +11,18 @@ struct RootView: View {
             }
 
             // TODO(cleanup): Existing feature entry points are retained during the redesign and should be removed after the new design replaces them.
-            LegacyTrainingHomeView(viewModel: TrainingHomeViewModel(
-                planRepository: container.trainingPlanRepository,
+            LegacyTrainingHomeView(viewModel: LegacyTrainingHomeViewModel(
+                planRepository: container.legacyTrainingPlanRepository,
                 forceDeviceRepository: container.forceDeviceRepository
             ))
             .tabItem {
                 Label("旧训练页", systemImage: "timer")
             }
 
-            RecordsHomeView(viewModel: RecordsHomeViewModel(
-                recordRepository: container.trainingRecordRepository,
-                settingsRepository: container.appSettingsRepository,
-                statisticsCalculator: container.statisticsCalculator,
+            LegacyRecordsHomeView(viewModel: LegacyRecordsHomeViewModel(
+                recordRepository: container.legacyTrainingRecordRepository,
+                settingsRepository: container.legacyAppSettingsRepository,
+                statisticsCalculator: container.legacyStatisticsCalculator,
                 randomSource: container.randomSource
             ))
             .tabItem {

@@ -12,18 +12,18 @@ import Testing
 struct pullerbox_iosTests {
 
     @Test func trainingStatisticsCalculatesStableCycles() async throws {
-        var groups: [TrainingSampleGroup] = []
+        var groups: [LegacyTrainingSampleGroup] = []
         for cycle in 1...3 {
-            var samples: [TrainingSample] = []
+            var samples: [LegacyTrainingSample] = []
             for index in 0..<200 {
                 let sampleTime = Double((cycle - 1) * 200 + index) * 0.05
                 let sampleValue = index < 20 ? Double(index) : 24
-                samples.append(TrainingSample(time: sampleTime, value: sampleValue))
+                samples.append(LegacyTrainingSample(time: sampleTime, value: sampleValue))
             }
-            groups.append(TrainingSampleGroup(cycle: cycle, samples: samples))
+            groups.append(LegacyTrainingSampleGroup(cycle: cycle, samples: samples))
         }
 
-        let statistics = TrainingStatisticsCalculator().calculate(
+        let statistics = LegacyTrainingStatisticsCalculator().calculate(
             groupedSamples: groups,
             workSeconds: 10,
             sampleIntervalSeconds: 0.05
@@ -36,8 +36,8 @@ struct pullerbox_iosTests {
     }
 
     @Test func seedBuilderCreatesRecordsWithStatistics() async throws {
-        let builder = TrainingRecordSeedBuilder(
-            calculator: TrainingStatisticsCalculator(),
+        let builder = LegacyTrainingRecordSeedBuilder(
+            calculator: LegacyTrainingStatisticsCalculator(),
             randomSource: SeededRandomSource(seed: 42),
             sampleIntervalSeconds: 0.05,
             noiseStrength: 0.1,
