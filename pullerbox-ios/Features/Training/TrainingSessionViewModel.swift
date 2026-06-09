@@ -423,14 +423,14 @@ final class TrainingSessionViewModel: ObservableObject {
 
         for (planStepIndex, planStep) in snapshot.plan.steps.enumerated() {
             switch planStep {
-            case let .interval(interval):
-                phases.append(.interval(interval, planStepIndex: planStepIndex))
+            case let .customCountdown(customCountdown):
+                phases.append(.customCountdown(customCountdown, planStepIndex: planStepIndex))
             case let .actionGroup(group):
                 for cycle in 1...group.cycles {
                     for (actionStepIndex, groupStep) in group.steps.enumerated() {
                         switch groupStep {
-                        case let .interval(interval):
-                            phases.append(.groupInterval(interval, group: group, planStepIndex: planStepIndex, cycleIndex: cycle, actionStepIndex: actionStepIndex))
+                        case let .customCountdown(customCountdown):
+                            phases.append(.groupCustomCountdown(customCountdown, group: group, planStepIndex: planStepIndex, cycleIndex: cycle, actionStepIndex: actionStepIndex))
                         case let .action(actionStep):
                             guard let action = actionsById[actionStep.actionId],
                                   case let .timedReps(config) = action.kind else { continue }
@@ -508,15 +508,15 @@ struct ExecutionPhase: Identifiable, Equatable {
     let targetReps: Int?
 
     var isActiveTraining: Bool {
-        kind == .work || kind == .repRest || kind == .interval || kind == .groupRest
+        kind == .work || kind == .repRest || kind == .customCountdown || kind == .groupRest
     }
 
-    static func interval(_ interval: IntervalStep, planStepIndex: Int) -> ExecutionPhase {
-        ExecutionPhase(id: interval.id, kind: .interval, title: interval.title?.isEmpty == false ? interval.title ?? "间隔" : "间隔", durationSeconds: Double(interval.durationSeconds), planStepIndex: planStepIndex, actionGroupId: nil, cycleIndex: nil, actionStepIndex: nil, actionExecutionId: "", actionId: nil, actionName: nil, setIndex: nil, repIndex: nil, targetReps: nil)
+    static func customCountdown(_ customCountdown: CustomCountdown, planStepIndex: Int) -> ExecutionPhase {
+        ExecutionPhase(id: customCountdown.id, kind: .customCountdown, title: customCountdown.title?.isEmpty == false ? customCountdown.title ?? "自定义倒计时" : "自定义倒计时", durationSeconds: Double(customCountdown.durationSeconds), planStepIndex: planStepIndex, actionGroupId: nil, cycleIndex: nil, actionStepIndex: nil, actionExecutionId: "", actionId: nil, actionName: nil, setIndex: nil, repIndex: nil, targetReps: nil)
     }
 
-    static func groupInterval(_ interval: IntervalStep, group: ActionGroup, planStepIndex: Int, cycleIndex: Int, actionStepIndex: Int) -> ExecutionPhase {
-        ExecutionPhase(id: "\(group.id)-\(cycleIndex)-\(interval.id)", kind: .interval, title: interval.title?.isEmpty == false ? interval.title ?? "间隔" : "间隔", durationSeconds: Double(interval.durationSeconds), planStepIndex: planStepIndex, actionGroupId: group.id, cycleIndex: cycleIndex, actionStepIndex: actionStepIndex, actionExecutionId: "", actionId: nil, actionName: nil, setIndex: nil, repIndex: nil, targetReps: nil)
+    static func groupCustomCountdown(_ customCountdown: CustomCountdown, group: ActionGroup, planStepIndex: Int, cycleIndex: Int, actionStepIndex: Int) -> ExecutionPhase {
+        ExecutionPhase(id: "\(group.id)-\(cycleIndex)-\(customCountdown.id)", kind: .customCountdown, title: customCountdown.title?.isEmpty == false ? customCountdown.title ?? "自定义倒计时" : "自定义倒计时", durationSeconds: Double(customCountdown.durationSeconds), planStepIndex: planStepIndex, actionGroupId: group.id, cycleIndex: cycleIndex, actionStepIndex: actionStepIndex, actionExecutionId: "", actionId: nil, actionName: nil, setIndex: nil, repIndex: nil, targetReps: nil)
     }
 
     static func work(action: Action, group: ActionGroup, planStepIndex: Int, cycleIndex: Int, actionStepIndex: Int, setIndex: Int, repIndex: Int, targetReps: Int, duration: Double, executionId: String) -> ExecutionPhase {
@@ -539,7 +539,7 @@ struct ExecutionPhase: Identifiable, Equatable {
 enum ExecutionPhaseKind: Equatable {
     case work
     case repRest
-    case interval
+    case customCountdown
     case groupRest
     case resumeCountdown
 
@@ -547,7 +547,7 @@ enum ExecutionPhaseKind: Equatable {
         switch self {
         case .work: .work
         case .repRest: .repRest
-        case .interval: .interval
+        case .customCountdown: .customCountdown
         case .groupRest: .groupRest
         case .resumeCountdown: .resumeCountdown
         }
@@ -557,7 +557,7 @@ enum ExecutionPhaseKind: Equatable {
         switch self {
         case .work: "锻炼"
         case .repRest: "组内休息"
-        case .interval: "间隔"
+        case .customCountdown: "自定义倒计时"
         case .groupRest: "组间休息"
         case .resumeCountdown: "准备恢复"
         }

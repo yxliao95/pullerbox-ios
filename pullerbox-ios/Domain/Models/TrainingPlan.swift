@@ -54,12 +54,12 @@ struct TrainingPlan: Identifiable, Codable, Equatable {
 }
 
 enum TrainingPlanStep: Identifiable, Codable, Equatable {
-    case interval(IntervalStep)
+    case customCountdown(CustomCountdown)
     case actionGroup(ActionGroup)
 
     var id: String {
         switch self {
-        case let .interval(step):
+        case let .customCountdown(step):
             step.id
         case let .actionGroup(group):
             group.id
@@ -68,7 +68,7 @@ enum TrainingPlanStep: Identifiable, Codable, Equatable {
 
     func estimatedDurationSeconds(actionsById: [String: Action]) -> Int? {
         switch self {
-        case let .interval(step):
+        case let .customCountdown(step):
             step.durationSeconds
         case let .actionGroup(group):
             group.estimatedDurationSeconds(actionsById: actionsById)
@@ -77,8 +77,8 @@ enum TrainingPlanStep: Identifiable, Codable, Equatable {
 
     func validationIssues(actionsById: [String: Action]) -> [TrainingPlanValidationIssue] {
         switch self {
-        case let .interval(step):
-            return step.validationIssues.map { .invalidInterval(stepId: step.id, issue: $0) }
+        case let .customCountdown(step):
+            return step.validationIssues.map { .invalidCustomCountdown(stepId: step.id, issue: $0) }
         case let .actionGroup(group):
             return group.validationIssues(actionsById: actionsById)
         }
@@ -144,12 +144,12 @@ struct ActionGroup: Identifiable, Codable, Equatable {
 }
 
 enum ActionGroupStep: Identifiable, Codable, Equatable {
-    case interval(IntervalStep)
+    case customCountdown(CustomCountdown)
     case action(ActionStep)
 
     var id: String {
         switch self {
-        case let .interval(step):
+        case let .customCountdown(step):
             step.id
         case let .action(step):
             step.id
@@ -158,7 +158,7 @@ enum ActionGroupStep: Identifiable, Codable, Equatable {
 
     func estimatedDurationSeconds(actionsById: [String: Action]) -> Int? {
         switch self {
-        case let .interval(step):
+        case let .customCountdown(step):
             step.durationSeconds
         case let .action(step):
             actionsById[step.actionId]?.estimatedDurationSeconds
@@ -167,8 +167,8 @@ enum ActionGroupStep: Identifiable, Codable, Equatable {
 
     func validationIssues(actionsById: [String: Action]) -> [TrainingPlanValidationIssue] {
         switch self {
-        case let .interval(step):
-            return step.validationIssues.map { .invalidInterval(stepId: step.id, issue: $0) }
+        case let .customCountdown(step):
+            return step.validationIssues.map { .invalidCustomCountdown(stepId: step.id, issue: $0) }
         case let .action(step):
             guard let action = actionsById[step.actionId] else {
                 return [.missingAction(actionStepId: step.id, actionId: step.actionId)]
@@ -178,13 +178,13 @@ enum ActionGroupStep: Identifiable, Codable, Equatable {
     }
 }
 
-struct IntervalStep: Identifiable, Codable, Equatable {
+struct CustomCountdown: Identifiable, Codable, Equatable {
     let id: String
     var title: String?
     var durationSeconds: Int
 
-    var validationIssues: [IntervalValidationIssue] {
-        TrainingDesignLimits.intervalSeconds.contains(durationSeconds) ? [] : [.durationOutOfRange]
+    var validationIssues: [CustomCountdownValidationIssue] {
+        TrainingDesignLimits.customCountdownSeconds.contains(durationSeconds) ? [] : [.durationOutOfRange]
     }
 }
 
@@ -197,13 +197,13 @@ enum TrainingPlanValidationIssue: Equatable {
     case emptyName
     case missingActionGroup
     case missingValidAction
-    case invalidInterval(stepId: String, issue: IntervalValidationIssue)
+    case invalidCustomCountdown(stepId: String, issue: CustomCountdownValidationIssue)
     case invalidActionGroup(groupId: String, issue: ActionGroupValidationIssue)
     case missingAction(actionStepId: String, actionId: String)
     case invalidAction(actionId: String, issue: ActionValidationIssue)
 }
 
-enum IntervalValidationIssue: Equatable {
+enum CustomCountdownValidationIssue: Equatable {
     case durationOutOfRange
 }
 

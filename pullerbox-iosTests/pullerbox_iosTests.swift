@@ -72,7 +72,7 @@ struct pullerbox_iosTests {
         #expect(action.isValid)
     }
 
-    @Test func planDurationKeepsConsecutiveIntervalsAndSkipsTrailingGroupRest() async throws {
+    @Test func planDurationKeepsConsecutiveCustomCountdownsAndSkipsTrailingGroupRest() async throws {
         let action = Action(
             id: "left-hang",
             name: "左手悬挂",
@@ -87,8 +87,8 @@ struct pullerbox_iosTests {
             id: "group-1",
             title: "左右手",
             steps: [
-                .interval(IntervalStep(id: "prepare", title: "准备", durationSeconds: 10)),
-                .interval(IntervalStep(id: "chalk", title: "上镁粉", durationSeconds: 5)),
+                .customCountdown(CustomCountdown(id: "prepare", title: "准备", durationSeconds: 10)),
+                .customCountdown(CustomCountdown(id: "chalk", title: "上镁粉", durationSeconds: 5)),
                 .action(ActionStep(id: "action-step-1", actionId: action.id))
             ],
             groupRestSeconds: 30,

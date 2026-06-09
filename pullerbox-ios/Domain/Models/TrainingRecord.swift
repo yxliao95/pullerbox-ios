@@ -25,7 +25,7 @@ enum TrainingCompletionReason: String, Codable, Equatable {
 enum TrainingPhaseKind: String, Codable, Equatable {
     case work
     case repRest
-    case interval
+    case customCountdown
     case groupRest
     case paused
     case resumeCountdown

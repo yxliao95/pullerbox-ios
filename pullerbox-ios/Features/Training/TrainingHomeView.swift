@@ -499,17 +499,17 @@ struct TrainingPlanEditorView: View {
                         Label("新增动作组", systemImage: "plus")
                     }
                     Button {
-                        plan.steps.append(.interval(.emptyDraft()))
+                        plan.steps.append(.customCountdown(.emptyDraft()))
                     } label: {
-                        Label("新增计划间隔", systemImage: "timer")
+                        Label("新增自定义倒计时", systemImage: "timer")
                     }
                 }
 
                 ForEach(Array(plan.steps.enumerated()), id: \.element.id) { index, step in
                     switch step {
-                    case let .interval(interval):
-                        intervalSection(title: "计划间隔", interval: interval) { updated in
-                            plan.steps[index] = .interval(updated)
+                    case let .customCountdown(customCountdown):
+                        customCountdownSection(title: "自定义倒计时", customCountdown: customCountdown) { updated in
+                            plan.steps[index] = .customCountdown(updated)
                         }
                     case let .actionGroup(group):
                         actionGroupSection(groupIndex: index, group: group)
@@ -585,30 +585,30 @@ struct TrainingPlanEditorView: View {
 
             ForEach(Array(group.steps.enumerated()), id: \.element.id) { stepIndex, step in
                 switch step {
-                case let .interval(interval):
+                case let .customCountdown(customCountdown):
                     VStack(alignment: .leading, spacing: 6) {
-                        TextField("间隔名称（可选）", text: Binding(
-                            get: { interval.title ?? "" },
+                        TextField("倒计时名称（可选）", text: Binding(
+                            get: { customCountdown.title ?? "" },
                             set: { title in
                                 updateGroup(groupIndex) { group in
-                                    if case var .interval(existing) = group.steps[stepIndex] {
+                                    if case var .customCountdown(existing) = group.steps[stepIndex] {
                                         existing.title = title.isEmpty ? nil : title
-                                        group.steps[stepIndex] = .interval(existing)
+                                        group.steps[stepIndex] = .customCountdown(existing)
                                     }
                                 }
                             }
                         ))
-                        Stepper("\(interval.durationSeconds) 秒", value: Binding(
-                            get: { interval.durationSeconds },
+                        Stepper("\(customCountdown.durationSeconds) 秒", value: Binding(
+                            get: { customCountdown.durationSeconds },
                             set: { duration in
                                 updateGroup(groupIndex) { group in
-                                    if case var .interval(existing) = group.steps[stepIndex] {
+                                    if case var .customCountdown(existing) = group.steps[stepIndex] {
                                         existing.durationSeconds = duration
-                                        group.steps[stepIndex] = .interval(existing)
+                                        group.steps[stepIndex] = .customCountdown(existing)
                                     }
                                 }
                             }
-                        ), in: TrainingDesignLimits.intervalSeconds)
+                        ), in: TrainingDesignLimits.customCountdownSeconds)
                     }
                 case let .action(actionStep):
                     HStack {
@@ -640,9 +640,9 @@ struct TrainingPlanEditorView: View {
             }
 
             Button {
-                updateGroup(groupIndex) { $0.steps.append(.interval(.emptyDraft())) }
+                updateGroup(groupIndex) { $0.steps.append(.customCountdown(.emptyDraft())) }
             } label: {
-                Label("添加间隔", systemImage: "timer")
+                Label("添加自定义倒计时", systemImage: "timer")
             }
             Menu {
                 ForEach(actions) { action in
@@ -660,24 +660,24 @@ struct TrainingPlanEditorView: View {
         }
     }
 
-    private func intervalSection(title: String, interval: IntervalStep, onUpdate: @escaping (IntervalStep) -> Void) -> some View {
+    private func customCountdownSection(title: String, customCountdown: CustomCountdown, onUpdate: @escaping (CustomCountdown) -> Void) -> some View {
         Section(title) {
             TextField("名称（可选）", text: Binding(
-                get: { interval.title ?? "" },
+                get: { customCountdown.title ?? "" },
                 set: {
-                    var updated = interval
+                    var updated = customCountdown
                     updated.title = $0.isEmpty ? nil : $0
                     onUpdate(updated)
                 }
             ))
-            Stepper("\(interval.durationSeconds) 秒", value: Binding(
-                get: { interval.durationSeconds },
+            Stepper("\(customCountdown.durationSeconds) 秒", value: Binding(
+                get: { customCountdown.durationSeconds },
                 set: {
-                    var updated = interval
+                    var updated = customCountdown
                     updated.durationSeconds = $0
                     onUpdate(updated)
                 }
-            ), in: TrainingDesignLimits.intervalSeconds)
+            ), in: TrainingDesignLimits.customCountdownSeconds)
         }
     }
 
@@ -764,9 +764,9 @@ private extension ActionGroup {
     }
 }
 
-private extension IntervalStep {
-    static func emptyDraft() -> IntervalStep {
-        IntervalStep(id: makeId("interval"), title: nil, durationSeconds: 10)
+private extension CustomCountdown {
+    static func emptyDraft() -> CustomCountdown {
+        CustomCountdown(id: makeId("customCountdown"), title: nil, durationSeconds: 10)
     }
 
     private static func makeId(_ prefix: String) -> String {
