@@ -1,50 +1,33 @@
-# 训练重设计方案
+# 计划训练（Planned Training）工程设计指南
 
-本文档记录新训练流程第一阶段的产品与领域设计共识。实现时仍遵循 `docs/01-architecture.md`：SwiftUI + MVVM + Repository + Service + Store。旧功能先统一标记并重命名为 `Legacy*`，新设计使用清晰的领域命名。
+相关文档：
 
-## 第一阶段目标
+- 路线图：`../plans/planned-training-roadmap.md`
+- UI 设计：`../ui/planned-training-ui-guide.md`
 
-第一阶段目标是跑通完整计划训练闭环：
+本文档面向开发工程师和 AI 开发代理，定义计划训练（Planned Training）的领域模型、有效性规则、执行规则、状态口径和统计口径。
 
-```text
-动作库
-  ↓
-训练计划库
-  ↓
-计划编辑
-  ↓
-训练执行
-  ↓
-训练摘要
-  ↓
-保存训练结果
-```
+实现必须遵循 `../01-architecture.md`：SwiftUI + MVVM + Repository + Service + Store。
 
-第一阶段暂不包含：
+## 架构边界
 
-- 自由训练。
-- 新记录列表、记录详情和历史统计。
-- 力竭信号。
-- 训练中跳过当前阶段。
-- 训练中修改计划或动作参数。
-- App 被系统终止后的训练恢复。
-
-## Legacy 策略
-
-所有旧内容都会被重新设计和替换。实施顺序：
-
-1. 先做纯 `Legacy*` 重命名，不改变旧功能行为，并验证构建通过。
-2. 再使用干净命名实现新训练闭环。
-3. 新闭环稳定后删除 `Legacy*` 内容。
-
-旧内容包括旧训练页、旧记录页、旧 ViewModel、旧领域模型、旧 Repository、旧 Store 以及只服务旧流程的辅助逻辑。真正通用的工具可以保留原名，例如格式化、基础扩展等。
+- View 只负责界面展示和用户交互。
+- ViewModel 负责页面状态、用户操作、训练流程编排和数据转换。
+- ViewModel 只依赖 RepositoryProtocol。
+- Domain Model 表达训练计划、动作、执行快照、采样、摘要等业务含义，不依赖 SwiftUI、CoreBluetooth 或本地存储实现。
+- Repository 组合 Store 和 Service，向 ViewModel 提供稳定接口。
+- Store 负责本地持久化。
+- Service 负责蓝牙、系统 API 等底层能力。
 
 ## 核心模型
+
+### 训练计划（TrainingPlan）
 
 训练计划由计划级步骤序列组成：
 
 ```text
 TrainingPlan
+  id
   name
   steps:
     - interval
@@ -53,10 +36,13 @@ TrainingPlan
     - actionGroup
 ```
 
-动作组不是独立库对象，只存在于训练计划内部：
+### 动作组（ActionGroup）
+
+动作组只存在于训练计划内部，不是独立库对象：
 
 ```text
 ActionGroup
+  id
   title: String?
   steps:
     - interval
@@ -67,7 +53,9 @@ ActionGroup
   cycles
 ```
 
-动作是独立库对象，第一阶段只支持 `timed_reps`：
+### 动作（Action）
+
+动作是独立库对象。第一阶段只支持 timed reps：
 
 ```text
 Action
@@ -79,24 +67,29 @@ Action
   restSecondsBetweenReps
 ```
 
-`interval` 是独立步骤：
+### 计划间隔（IntervalStep）
 
 ```text
 IntervalStep
+  id
   title: String?
   durationSeconds
 ```
+
+### 动作引用（ActionReference）
+
+训练计划引用动作 ID，不复制动作内容。开始训练时再解析引用并生成只读执行快照。
 
 ## 命名与有效性
 
 - `TrainingPlan.name` 必填，并且在计划库内唯一。
 - `Action.name` 必填，并且在动作库内唯一。
 - `ActionGroup.title` 可选，不要求唯一。
-- `IntervalStep.title` 可选，不要求唯一；为空时显示“间隔”。
+- `IntervalStep.title` 可选，不要求唯一；为空时显示为“间隔”。
 - 计划库和动作库都允许为空。
 - 编辑过程中允许临时无效状态，例如空计划、空动作组。
 - 保存计划时必须有效。
-- 外部变化可以让已有计划变无效，例如删除被引用的动作。
+- 外部变化可以让已有计划变无效，例如删除被引用动作。
 
 计划保存的最小有效规则：
 
@@ -119,7 +112,7 @@ cycles: 1...100
 
 ## 计划编排规则
 
-- 训练计划和动作组都采用步骤序列模型。
+- 训练计划（TrainingPlan）和动作组（ActionGroup）都采用步骤序列模型。
 - `interval` 可以出现在步骤序列开头、结尾或中间。
 - 允许连续 `interval`。
 - 连续 `interval` 保留为多个独立阶段，不自动合并。
@@ -135,7 +128,7 @@ cycles: 1...100
 - `groupRestSeconds = 0` 时跳过组间休息阶段。
 - `groupRest` 不单独命名，训练中统一显示“组间休息”。
 
-`timed_reps` 动作执行规则：
+timed reps 动作执行规则：
 
 - 每个 rep 包含 `workSecondsPerRep`。
 - `restSecondsBetweenReps` 只发生在 rep 之间，不发生在最后一个 rep 后。
@@ -161,16 +154,14 @@ planDuration =
 
 ## 动作库与计划库
 
-第一版有独立动作库入口，也支持在计划编辑器内联新建动作。
-
-动作库支持：
+动作库（Action Library）支持：
 
 - 新增动作。
 - 编辑动作。
 - 删除动作。
 - 编辑或删除时列出受影响训练计划。
 
-计划库支持：
+计划库（TrainingPlan Library）支持：
 
 - 新增计划。
 - 编辑计划。
@@ -183,9 +174,9 @@ planDuration =
 - 训练计划引用动作 ID。
 - 修改动作会影响引用它的训练计划。
 - 保存已被引用的动作前，需要提醒用户并列出受影响计划。
-- 保存动作时的选项：保存并更新训练计划、保存为新动作、取消。
+- 保存已被引用动作时，业务操作包括：保存并更新训练计划、保存为新动作、取消。
 - 选择“保存为新动作”只创建新动作，不修改任何已有训练计划。
-- 删除被引用的动作时，允许删除；确认前列出受影响计划，删除后相关计划变为无效。
+- 删除被引用动作时允许删除；确认前列出受影响计划，删除后相关计划变为无效。
 
 无效计划规则：
 
@@ -202,7 +193,7 @@ planDuration =
 - 编辑非当前计划保存后，不切换当前计划。
 - 删除当前计划后，清空当前选择，不自动切换到其他计划。
 
-## 训练首页
+## 训练首页状态
 
 训练首页以当前训练计划为中心。
 
@@ -242,14 +233,16 @@ planDuration =
 开始训练不可用
 ```
 
+未连接设备时开始训练不弹二次确认，直接进入计时模式（timerOnly）。
+
 ## 训练开始与执行快照
 
 开始训练时：
 
 1. 校验当前计划有效。
 2. 解析所有动作引用。
-3. 生成完整 `TrainingExecutionSnapshot`。
-4. 根据设备连接状态确定测量模式。
+3. 生成完整训练执行快照（TrainingExecutionSnapshot）。
+4. 根据设备连接状态确定测量模式（measurementMode）。
 5. 直接进入计划第一个步骤。
 
 训练开始前没有系统级准备倒计时。如果需要准备时间，用户应在计划开头添加 `interval`。
@@ -263,7 +256,7 @@ planDuration =
 
 ## 测量模式
 
-训练开始时确定 `measurementMode`：
+训练开始时确定测量模式（measurementMode）：
 
 ```text
 forceDevice
@@ -272,17 +265,17 @@ timerOnly
 
 训练开始后测量模式固定：
 
-- `timerOnly` 不能中途切换为 `forceDevice`。
-- `forceDevice` 断连后进入意外暂停，不降级为 `timerOnly`。
+- 计时模式（timerOnly）不能中途切换为拉力计模式（forceDevice）。
+- 拉力计模式（forceDevice）断连后进入意外暂停，不降级为计时模式（timerOnly）。
 
-`forceDevice`：
+拉力计模式（forceDevice）：
 
 - 显示实时力量读数。
 - 绘制阶段曲线。
 - 保存力量采样。
 - 摘要包含力量统计。
 
-`timerOnly`：
+计时模式（timerOnly）：
 
 - 只执行训练倒计时。
 - 不显示实时力量读数。
@@ -290,47 +283,32 @@ timerOnly
 - 不保存力量采样。
 - 摘要不显示拉力计相关统计。
 
-未连接设备时点击开始训练，不做二次确认，直接进入 `timerOnly`。
+## 训练阶段
 
-## 训练中页面
+训练执行页需要支持这些阶段：
 
-训练中页面以当前动作、当前 rep 和当前阶段倒计时为主。
-
-主信息：
-
-- 当前阶段：work、rep rest、interval、group rest、paused 等。
-- 当前动作名称。
-- 当前 set / rep。
-- 当前阶段倒计时。
-
-辅助信息：
-
-- 动作组进度。
-- 计划总进度。
-
-实时反馈：
-
-- `forceDevice` 下显示当前力量、阶段曲线。
-- `timerOnly` 下显示倒计时画面。
+```text
+work
+repRest
+interval
+groupRest
+paused
+resumeCountdown
+```
 
 训练中只支持：
 
-- 暂停 / 恢复。
+- 暂停。
+- 恢复。
 - 结束。
 
-手动结束训练需要确认：
-
-```text
-结束本次训练？
-  结束并查看摘要
-  继续训练
-```
+手动结束训练需要确认。确认后进入未保存摘要页。
 
 计划自然完成后自动进入未保存摘要页。
 
 ## 实时曲线规则
 
-`forceDevice` 下，以下阶段绘制曲线：
+拉力计模式（forceDevice）下，以下阶段绘制曲线：
 
 - work。
 - rep rest。
@@ -352,7 +330,7 @@ Y 轴：
 - 如果当前读数超过 `yMax * 0.7`，则 `yMax += 10kg`。
 - 阶段切换不重置 Y 轴。
 
-视觉强调：
+视觉和统计口径：
 
 - work 阶段显示主曲线，并参与动作表现统计。
 - rep rest、interval、group rest 显示弱化曲线，保存采样，但默认不参与动作表现统计。
@@ -363,14 +341,15 @@ Y 轴：
 
 暂停期间：
 
-- `forceDevice` 下继续保存采样，标记为 paused。
+- 拉力计模式（forceDevice）下继续保存采样，标记为 `paused`。
 - paused samples 默认不参与训练统计。
 - 页面显示静止暂停画面，不绘制曲线。
 
-`forceDevice` 模式下设备断连：
+拉力计模式（forceDevice）下设备断连：
 
 - 自动进入意外暂停。
 - 标记发生过意外暂停。
+- 恢复前必须重新连接设备。
 
 work 阶段被中断时，无论主动暂停还是意外暂停：
 
@@ -385,7 +364,7 @@ work 阶段被中断时，无论主动暂停还是意外暂停：
 - 恢复前先 3 秒倒计时。
 - 继续剩余倒计时。
 
-上述规则同时适用于 `forceDevice` 和 `timerOnly`。`timerOnly` 虽然没有采样，但 work 被中断后仍重启当前 work，以保持完成口径一致。
+上述规则同时适用于拉力计模式（forceDevice）和计时模式（timerOnly）。计时模式虽然没有采样，但 work 被中断后仍重启当前 work，以保持完成口径一致。
 
 恢复倒计时：
 
@@ -393,7 +372,7 @@ work 阶段被中断时，无论主动暂停还是意外暂停：
 - 不计入训练时间。
 - 不参与动作统计。
 
-## 训练结束与摘要保存
+## 训练结束与保存
 
 第一阶段结束原因：
 
@@ -412,7 +391,7 @@ stoppedAfterUnexpectedPause
 
 1. 生成摘要。
 2. 展示未保存摘要页。
-3. 用户手动保存或不保存。
+3. 用户手动保存或丢弃。
 
 保存：
 
@@ -442,7 +421,7 @@ stoppedAfterUnexpectedPause
 - 训练执行快照。
 - 开始和结束时间。
 - 测量模式。
-- 采样数据，`timerOnly` 无采样。
+- 采样数据，计时模式（timerOnly）无采样。
 - 暂停事件明细。
 - 摘要统计。
 - 计划预计时长。
@@ -467,8 +446,6 @@ pauseDuration
   totalElapsedDuration - activeTrainingDuration
 ```
 
-摘要第一版只显示汇总暂停时长，不显示暂停次数或类型拆分。训练记录仍保存暂停事件明细。
-
 摘要基础字段，所有测量模式都显示：
 
 - 总时间。
@@ -480,12 +457,12 @@ pauseDuration
 - 按动作统计的完成 reps。
 - 按动作统计的组间休息时间。
 
-`forceDevice` 额外显示：
+拉力计模式（forceDevice）额外显示：
 
 - 最大力量。
 - rep 级力量统计。
 
-`timerOnly` 不显示：
+计时模式（timerOnly）不显示：
 
 - 当前力量。
 - 最大力量。
@@ -567,16 +544,23 @@ TrainingSummary
 
 第一阶段不设计、不保存、不展示力竭信号字段。
 
-## 后续待设计
+## 测试建议
 
-以下内容留到后续阶段：
+至少覆盖：
 
-- 新记录列表。
-- 训练记录详情。
-- 历史趋势和统计。
-- 自由训练。
-- 力竭信号算法。
-- 训练中跳过阶段。
-- 训练中调整剩余计划。
-- 中途连接设备并从 `timerOnly` 切换到 `forceDevice`。
-- App 终止后的未完成训练恢复。
+- 计划保存有效性。
+- 动作名称和计划名称唯一性。
+- 删除被引用动作后计划变无效。
+- 编辑被引用动作时的更新和另存路径。
+- 当前计划删除后清空选择。
+- 无效当前计划不可开始。
+- 训练开始生成只读执行快照。
+- 计时模式和拉力计模式开始后不切换。
+- 拉力计模式断连进入意外暂停。
+- work 暂停后重启当前 work，且当前 rep 不算完成。
+- 非 work 暂停后继续剩余时间。
+- 恢复倒计时计入总时间但不计入训练时间。
+- 手动结束和自然完成都进入未保存摘要。
+- 保存和丢弃摘要行为。
+- 同一动作多次出现时摘要合并。
+
