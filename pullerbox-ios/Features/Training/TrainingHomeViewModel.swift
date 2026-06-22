@@ -3,34 +3,55 @@ import Foundation
 
 @MainActor
 final class TrainingHomeViewModel: ObservableObject {
-    @Published var plans: [TrainingPlan] = TrainingPlanLibrarySnapshot.default.plans
-    @Published var selectedPlanId: String? = TrainingPlan.default.id
-    @Published var isFreeTraining = false
-    @Published var isEditingPlanLibrary = false
-    @Published var selectedPlanIds: Set<String> = []
+    @Published var actions: [Action] = []
+    @Published var plans: [TrainingPlan] = []
+    @Published var currentPlanId: String?
     @Published var isLoaded = false
     @Published var isDeviceConnected = false
 
+    private let actionRepository: ActionLibraryRepositoryProtocol
     private let planRepository: TrainingPlanRepositoryProtocol
+    let recordRepository: TrainingRecordRepositoryProtocol
     private let forceDeviceRepository: ForceDeviceRepositoryProtocol
 
-    init(planRepository: TrainingPlanRepositoryProtocol, forceDeviceRepository: ForceDeviceRepositoryProtocol) {
+    init(
+        actionRepository: ActionLibraryRepositoryProtocol,
+        planRepository: TrainingPlanRepositoryProtocol,
+        recordRepository: TrainingRecordRepositoryProtocol,
+        forceDeviceRepository: ForceDeviceRepositoryProtocol
+    ) {
+        self.actionRepository = actionRepository
         self.planRepository = planRepository
+        self.recordRepository = recordRepository
         self.forceDeviceRepository = forceDeviceRepository
     }
 
-    var selectedPlan: TrainingPlan {
-        plans.first(where: { $0.id == selectedPlanId }) ?? plans.first ?? .default
+    var actionsById: [String: Action] {
+        Dictionary(uniqueKeysWithValues: actions.map { ($0.id, $0) })
+    }
+
+    var forceDeviceRepositoryForSession: ForceDeviceRepositoryProtocol {
+        forceDeviceRepository
+    }
+
+    var currentPlan: TrainingPlan? {
+        plans.first { $0.id == currentPlanId }
+    }
+
+    var validPlans: [TrainingPlan] {
+        plans.filter { $0.isValid(actionsById: actionsById) }
     }
 
     func load() {
         guard !isLoaded else { return }
         isLoaded = true
         Task {
-            let snapshot = await planRepository.loadLibrary()
-            plans = snapshot.plans.isEmpty ? TrainingPlanLibrarySnapshot.default.plans : snapshot.plans
-            selectedPlanId = plans.contains(where: { $0.id == snapshot.selectedPlanId }) ? snapshot.selectedPlanId : plans.first?.id
-            isFreeTraining = snapshot.isFreeTraining
+            let actionSnapshot = await actionRepository.loadLibrary()
+            let planSnapshot = await planRepository.loadLibrary()
+            actions = actionSnapshot.actions
+            plans = planSnapshot.plans
+            currentPlanId = planSnapshot.currentPlanId
+            isDeviceConnected = forceDeviceRepository.isConnected
         }
     }
 
@@ -43,79 +64,96 @@ final class TrainingHomeViewModel: ObservableObject {
         isDeviceConnected = forceDeviceRepository.isConnected
     }
 
-    func setFreeTraining(_ enabled: Bool) {
-        isFreeTraining = enabled
-        persist()
+    func upsertAction(_ action: Action) {
+        if let index = actions.firstIndex(where: { $0.id == action.id }) {
+            actions[index] = action
+        } else {
+            actions.append(action)
+        }
+        persistActions()
     }
 
-    func selectPlan(_ plan: TrainingPlan) {
-        selectedPlanId = plan.id
-        isFreeTraining = false
-        persist()
+    func deleteAction(_ action: Action) {
+        actions.removeAll { $0.id == action.id }
+        persistActions()
+        persistPlans()
     }
 
-    func addPlan() {
-        let plan = TrainingPlan(
-            id: "plan-\(Date().timeIntervalSince1970)",
-            name: "默认",
-            workSeconds: 7,
-            restSeconds: 3,
-            cycles: 20
-        )
-        plans.append(plan)
-        selectedPlanId = plan.id
-        persist()
+    func affectedPlans(for action: Action) -> [TrainingPlan] {
+        plans.filter { plan in
+            plan.steps.contains { step in
+                guard case let .actionGroup(group) = step else { return false }
+                return group.steps.contains { groupStep in
+                    guard case let .action(actionStep) = groupStep else { return false }
+                    return actionStep.actionId == action.id
+                }
+            }
+        }
     }
 
-    func updateSelectedPlan(name: String? = nil, workSeconds: Int? = nil, restSeconds: Int? = nil, cycles: Int? = nil) {
-        guard let index = plans.firstIndex(where: { $0.id == selectedPlanId }) else { return }
-        plans[index].name = name ?? plans[index].name
-        plans[index].workSeconds = max(1, workSeconds ?? plans[index].workSeconds)
-        plans[index].restSeconds = max(0, restSeconds ?? plans[index].restSeconds)
-        plans[index].cycles = max(1, cycles ?? plans[index].cycles)
-        persist()
+    func upsertPlan(_ plan: TrainingPlan, selectAfterSave: Bool) {
+        if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+            plans[index] = plan
+        } else {
+            plans.append(plan)
+        }
+        if selectAfterSave {
+            currentPlanId = plan.id
+        }
+        persistPlans()
     }
 
     func deletePlan(_ plan: TrainingPlan) {
         plans.removeAll { $0.id == plan.id }
-        if plans.isEmpty {
-            plans = [TrainingPlan.default]
+        if currentPlanId == plan.id {
+            currentPlanId = nil
         }
-        if !plans.contains(where: { $0.id == selectedPlanId }) {
-            selectedPlanId = plans.first?.id
-        }
-        persist()
+        persistPlans()
     }
 
-    func clearSelectedPlans() {
-        plans.removeAll { selectedPlanIds.contains($0.id) }
-        selectedPlanIds = []
-        if plans.isEmpty {
-            plans = [TrainingPlan.default]
-        }
-        if !plans.contains(where: { $0.id == selectedPlanId }) {
-            selectedPlanId = plans.first?.id
-        }
-        persist()
+    func selectPlan(_ plan: TrainingPlan) {
+        guard plan.isValid(actionsById: actionsById) else { return }
+        currentPlanId = plan.id
+        persistPlans()
     }
 
-    func movePlans(from source: IndexSet, to destination: Int) {
-        plans.move(fromOffsets: source, toOffset: destination)
-        persist()
+    func makeExecutionSnapshot() -> TrainingExecutionSnapshot? {
+        guard let currentPlan,
+              currentPlan.isValid(actionsById: actionsById),
+              let plannedDuration = currentPlan.estimatedDurationSeconds(actionsById: actionsById) else {
+            return nil
+        }
+        let usedActionIds = currentPlan.usedActionIds
+        let usedActions = actions.filter { usedActionIds.contains($0.id) }
+        return TrainingExecutionSnapshot(
+            plan: currentPlan,
+            actions: usedActions,
+            measurementMode: isDeviceConnected ? .forceDevice : .timerOnly,
+            plannedDurationSeconds: plannedDuration
+        )
     }
 
-    func toggleSelectedPlan(_ id: String) {
-        if selectedPlanIds.contains(id) {
-            selectedPlanIds.remove(id)
-        } else {
-            selectedPlanIds.insert(id)
-        }
+    private func persistActions() {
+        let snapshot = ActionLibrarySnapshot(actions: actions)
+        Task { await actionRepository.saveLibrary(snapshot) }
     }
 
-    private func persist() {
-        let snapshot = TrainingPlanLibrarySnapshot(plans: plans, selectedPlanId: selectedPlanId, isFreeTraining: isFreeTraining)
-        Task {
-            await planRepository.saveLibrary(snapshot)
+    private func persistPlans() {
+        let snapshot = TrainingPlanLibrarySnapshot(plans: plans, currentPlanId: currentPlanId)
+        Task { await planRepository.saveLibrary(snapshot) }
+    }
+}
+
+private extension TrainingPlan {
+    var usedActionIds: Set<String> {
+        var ids = Set<String>()
+        for step in steps {
+            guard case let .actionGroup(group) = step else { continue }
+            for groupStep in group.steps {
+                guard case let .action(actionStep) = groupStep else { continue }
+                ids.insert(actionStep.actionId)
+            }
         }
+        return ids
     }
 }

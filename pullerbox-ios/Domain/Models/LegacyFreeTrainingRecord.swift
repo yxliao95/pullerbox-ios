@@ -1,6 +1,6 @@
 import Foundation
 
-struct FreeTrainingRecord: Identifiable, Codable, Equatable {
+struct LegacyFreeTrainingRecord: Identifiable, Codable, Equatable {
     let id: String
     var title: String
     let totalSeconds: Double
@@ -14,6 +14,6 @@ struct FreeTrainingRecord: Identifiable, Codable, Equatable {
     let samples: [Double]
 }
 
-struct FreeTrainingRecordSnapshot: Codable, Equatable {
-    var records: [FreeTrainingRecord]
+struct LegacyFreeTrainingRecordSnapshot: Codable, Equatable {
+    var records: [LegacyFreeTrainingRecord]
 }

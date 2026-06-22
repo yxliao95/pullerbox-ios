@@ -15,6 +15,7 @@ struct pullerbox_iosApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(container)
+                .preferredColorScheme(.light)
         }
     }
 }

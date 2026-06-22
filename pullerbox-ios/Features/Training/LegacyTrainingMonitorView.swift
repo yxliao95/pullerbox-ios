@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct TrainingMonitorView: View {
-    @StateObject var viewModel: TrainingMonitorViewModel
+struct LegacyTrainingMonitorView: View {
+    @StateObject var viewModel: LegacyTrainingMonitorViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var freeTrainingTitle = "自由训练"
     @State private var didStart = false

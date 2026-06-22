@@ -1,101 +1,120 @@
 import Foundation
 
-struct TrainingSample: Identifiable, Codable, Equatable {
-    var id: Double { time }
-    let time: Double
+struct TrainingExecutionSnapshot: Codable, Equatable {
+    let plan: TrainingPlan
+    let actions: [Action]
+    let measurementMode: MeasurementMode
+    let plannedDurationSeconds: Int
+
+    var actionsById: [String: Action] {
+        Dictionary(uniqueKeysWithValues: actions.map { ($0.id, $0) })
+    }
+}
+
+enum MeasurementMode: String, Codable, Equatable {
+    case forceDevice
+    case timerOnly
+}
+
+enum TrainingCompletionReason: String, Codable, Equatable {
+    case completed
+    case stoppedByUser
+    case stoppedAfterUnexpectedPause
+}
+
+enum TrainingPhaseKind: String, Codable, Equatable {
+    case work
+    case repRest
+    case customCountdown
+    case groupRest
+    case paused
+    case resumeCountdown
+}
+
+struct ForceSample: Identifiable, Codable, Equatable {
+    let id: String
+    let elapsedSeconds: Double
     let value: Double
+    let phaseKind: TrainingPhaseKind
+    let actionId: String?
+    let setIndex: Int?
+    let repIndex: Int?
 }
 
-struct TrainingSampleGroup: Identifiable, Codable, Equatable {
-    var id: Int { cycle }
-    let cycle: Int
-    var samples: [TrainingSample]
+struct PauseEvent: Identifiable, Codable, Equatable {
+    let id: String
+    let kind: PauseKind
+    let startedAt: Date
+    var endedAt: Date?
+    let affectedPhaseKind: TrainingPhaseKind
+    let affectedActionId: String?
+    let affectedSetIndex: Int?
+    let affectedRepIndex: Int?
+    var resumeCountdownSeconds: Int
 }
 
-struct TrainingCycleStatistics: Identifiable, Codable, Equatable {
-    var id: Int { cycle }
-    let cycle: Int
-    let maxStrength: Double
-    let controlStrength: Double
-    let controlTime: Double
-    let outTime: Double
-    let averageStrength: Double
-    let fallbackLevel: Int
-    let fail: Bool
-    let startTime: Double
-    let lowTime: Double?
+enum PauseKind: String, Codable, Equatable {
+    case manual
+    case unexpected
 }
 
-struct TrainingStatistics: Codable, Equatable {
-    let maxStrengthSession: Double
-    let maxControlStrengthSession: Double
-    let controlCycles: Int
-    let fatigueStartCycle: Int
-    let fatigueStartTime: Double
-    let fatigueStartTimestamp: Double
-    let minControlStrength: Double
-    let minControlStrengthMissing: Bool
-    let dropMean: Double
-    let dropMax: Double
-    let dropStd: Double
-    let ruleVersion: String
-    let quantile: Double
-    let thresholdRatio: Double
-    let enterDurations: [Double]
-    let controlToleranceSeconds: Double
-    let fatigueThresholdRatio: Double
-    let fatigueDurationSeconds: Double
-    let stableWindowSeconds: Double
-    let stableWindowCv: Double
-    let cycleStatistics: [TrainingCycleStatistics]
+struct RepSummary: Identifiable, Codable, Equatable {
+    var id: String { "\(setIndex)-\(repIndex)" }
+    let setIndex: Int
+    let repIndex: Int
+    let completed: Bool
+    let peakForce: Double?
+    let averageForce: Double?
+    let workDurationSeconds: Double
+}
 
-    static let empty = TrainingStatistics(
-        maxStrengthSession: 0,
-        maxControlStrengthSession: 0,
-        controlCycles: 0,
-        fatigueStartCycle: 0,
-        fatigueStartTime: 0,
-        fatigueStartTimestamp: 0,
-        minControlStrength: 0,
-        minControlStrengthMissing: true,
-        dropMean: 0,
-        dropMax: 0,
-        dropStd: 0,
-        ruleVersion: TrainingStatisticsCalculator.ruleVersion,
-        quantile: TrainingStatisticsCalculator.quantileValue,
-        thresholdRatio: TrainingStatisticsCalculator.thresholdRatio,
-        enterDurations: TrainingStatisticsCalculator.enterDurations,
-        controlToleranceSeconds: TrainingStatisticsCalculator.controlToleranceSeconds,
-        fatigueThresholdRatio: TrainingStatisticsCalculator.fatigueThresholdRatio,
-        fatigueDurationSeconds: TrainingStatisticsCalculator.fatigueDurationSeconds,
-        stableWindowSeconds: TrainingStatisticsCalculator.stableWindowSeconds,
-        stableWindowCv: TrainingStatisticsCalculator.stableWindowCv,
-        cycleStatistics: []
-    )
+struct ActionExecutionSummary: Identifiable, Codable, Equatable {
+    let id: String
+    let actionId: String
+    let actionName: String
+    let actionGroupId: String
+    let planStepIndex: Int
+    let cycleIndex: Int
+    let actionStepIndex: Int
+    let setIndex: Int
+    let repSummaries: [RepSummary]
+    let completed: Bool
+}
+
+struct ActionSummary: Identifiable, Codable, Equatable {
+    var id: String { actionId }
+    let actionId: String
+    let actionName: String
+    let completedSets: Int
+    let partialSets: Int
+    let completedReps: Int
+    let groupRestSeconds: [Int]
+    let peakForce: Double?
 }
 
 struct TrainingSummary: Codable, Equatable {
-    let planName: String
-    let workSeconds: Int
-    let restSeconds: Int
-    let cycles: Int
-    let totalSeconds: Int
-    let statistics: TrainingStatistics
-    let hasStatistics: Bool
+    let plannedDurationSeconds: Int
+    let totalElapsedDurationSeconds: Double
+    let activeTrainingDurationSeconds: Double
+    let pauseDurationSeconds: Double
+    let uniqueActionCount: Int
+    let actionSummaries: [ActionSummary]
+    let completionReason: TrainingCompletionReason
 }
 
 struct TrainingRecord: Identifiable, Codable, Equatable {
     let id: String
-    let planName: String
-    let workSeconds: Int
-    let restSeconds: Int
-    let cycles: Int
-    let totalSeconds: Int
     let startedAt: Date
-    let groupedSamples: [TrainingSampleGroup]
-    let statistics: TrainingStatistics
+    let endedAt: Date
+    let snapshot: TrainingExecutionSnapshot
+    let samples: [ForceSample]
+    let pauseEvents: [PauseEvent]
+    let actionExecutionSummaries: [ActionExecutionSummary]
+    let summary: TrainingSummary
 }
 
 struct TrainingRecordSnapshot: Codable, Equatable {
     var records: [TrainingRecord]
+
+    static let empty = TrainingRecordSnapshot(records: [])
 }

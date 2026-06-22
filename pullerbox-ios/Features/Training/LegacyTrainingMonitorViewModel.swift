@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 @MainActor
-final class TrainingMonitorViewModel: ObservableObject {
+final class LegacyTrainingMonitorViewModel: ObservableObject {
     static let sampleIntervalSeconds = 0.05
     static let prepareSeconds = 3
     static let emaAlpha = 0.25
@@ -12,7 +12,7 @@ final class TrainingMonitorViewModel: ObservableObject {
     static let freeTrainingQuantile = 0.99
     static let freeTrainingControlRatio = 0.95
 
-    let plan: TrainingPlan
+    let plan: LegacyTrainingPlan
     let isFreeTraining: Bool
     let isDeviceConnected: Bool
 
@@ -26,7 +26,7 @@ final class TrainingMonitorViewModel: ObservableObject {
     @Published var currentValue = 0.0
     @Published var chartMaxValue = defaultChartMaxValue
     @Published var samples: [ChartSample] = [ChartSample(time: 0, value: 0)]
-    @Published var summary: TrainingSummary?
+    @Published var summary: LegacyTrainingSummary?
     @Published var freeTrainingElapsedSeconds = 0.0
     @Published var freeTrainingControlMaxValue: Double?
     @Published var freeTrainingLongestControlTimeSeconds: Double?
@@ -36,15 +36,15 @@ final class TrainingMonitorViewModel: ObservableObject {
     @Published var freeTrainingDeltaMinValue: Double?
 
     private let forceDeviceRepository: ForceDeviceRepositoryProtocol
-    private let recordRepository: TrainingRecordRepositoryProtocol
-    private let statisticsCalculator: TrainingStatisticsCalculator
+    private let recordRepository: LegacyTrainingRecordRepositoryProtocol
+    private let statisticsCalculator: LegacyTrainingStatisticsCalculator
     private var timer: Timer?
     private var smoothedValue = 0.0
     private var workElapsedSeconds = 0.0
     private var activeElapsedSeconds = 0.0
     private var trainingStartedAt = Date()
-    private var groupedWorkSamples: [TrainingSampleGroup] = []
-    private var pendingGroupedSamples: [TrainingSampleGroup]?
+    private var groupedWorkSamples: [LegacyTrainingSampleGroup] = []
+    private var pendingGroupedSamples: [LegacyTrainingSampleGroup]?
     private var recordSaved = false
 
     private var freeTrainingAllSamples: [Double] = []
@@ -55,12 +55,12 @@ final class TrainingMonitorViewModel: ObservableObject {
     private let freeTrainingMetricsWindowSampleCount: Int
 
     init(
-        plan: TrainingPlan,
+        plan: LegacyTrainingPlan,
         isFreeTraining: Bool,
         isDeviceConnected: Bool,
         forceDeviceRepository: ForceDeviceRepositoryProtocol,
-        recordRepository: TrainingRecordRepositoryProtocol,
-        statisticsCalculator: TrainingStatisticsCalculator
+        recordRepository: LegacyTrainingRecordRepositoryProtocol,
+        statisticsCalculator: LegacyTrainingStatisticsCalculator
     ) {
         self.plan = plan
         self.isFreeTraining = isFreeTraining
@@ -155,7 +155,7 @@ final class TrainingMonitorViewModel: ObservableObject {
     func saveTimedAndExit() {
         guard let summary else { return }
         let groups = pendingGroupedSamples ?? groupedWorkSamples
-        let record = TrainingRecord(
+        let record = LegacyTrainingRecord(
             id: "\(Int(trainingStartedAt.timeIntervalSince1970 * 1_000_000))",
             planName: plan.name,
             workSeconds: plan.workSeconds,
@@ -176,7 +176,7 @@ final class TrainingMonitorViewModel: ObservableObject {
     }
 
     func saveFreeAndExit(title: String) {
-        let record = FreeTrainingRecord(
+        let record = LegacyFreeTrainingRecord(
             id: "\(Int(trainingStartedAt.timeIntervalSince1970 * 1_000_000))",
             title: title.isEmpty ? "自由训练" : title,
             totalSeconds: freeTrainingElapsedSeconds,
@@ -187,7 +187,7 @@ final class TrainingMonitorViewModel: ObservableObject {
             currentWindowDeltaValue: freeTrainingCurrentWindowDeltaValue,
             deltaMaxValue: freeTrainingDeltaMaxValue,
             deltaMinValue: freeTrainingDeltaMinValue,
-            samples: downsampleFreeTrainingSamples(freeTrainingAllSamples)
+            samples: downsampleFreeLegacyTrainingSamples(freeTrainingAllSamples)
         )
         Task {
             var records = await recordRepository.loadFreeRecords()
@@ -223,7 +223,7 @@ final class TrainingMonitorViewModel: ObservableObject {
             workElapsedSeconds += Self.sampleIntervalSeconds
             ensureCycleGroup()
             groupedWorkSamples[groupedWorkSamples.count - 1].samples.append(
-                TrainingSample(time: workElapsedSeconds, value: currentValue)
+                LegacyTrainingSample(time: workElapsedSeconds, value: currentValue)
             )
             if currentCycle == 1 && currentValue > chartMaxValue {
                 chartMaxValue = roundToTenth(currentValue)
@@ -367,10 +367,10 @@ final class TrainingMonitorViewModel: ObservableObject {
     }
 
     private func buildSummary(
-        groupedSamples: [TrainingSampleGroup],
+        groupedSamples: [LegacyTrainingSampleGroup],
         completedCycles: Int? = nil,
         totalSecondsOverride: Int? = nil
-    ) -> TrainingSummary {
+    ) -> LegacyTrainingSummary {
         let resolvedCycles = completedCycles ?? plan.cycles
         let statistics = statisticsCalculator.calculate(
             groupedSamples: groupedSamples,
@@ -379,7 +379,7 @@ final class TrainingMonitorViewModel: ObservableObject {
         )
         let restCycles = resolvedCycles > 0 ? resolvedCycles - 1 : 0
         let totalSeconds = totalSecondsOverride ?? plan.workSeconds * resolvedCycles + plan.restSeconds * restCycles
-        return TrainingSummary(
+        return LegacyTrainingSummary(
             planName: plan.name,
             workSeconds: plan.workSeconds,
             restSeconds: plan.restSeconds,
@@ -394,7 +394,7 @@ final class TrainingMonitorViewModel: ObservableObject {
         if groupedWorkSamples.count >= currentCycle {
             return
         }
-        groupedWorkSamples.append(TrainingSampleGroup(cycle: currentCycle, samples: []))
+        groupedWorkSamples.append(LegacyTrainingSampleGroup(cycle: currentCycle, samples: []))
     }
 
     private func updateFreeTrainingMetrics(_ value: Double) {
@@ -433,7 +433,7 @@ final class TrainingMonitorViewModel: ObservableObject {
         freeTrainingDeltaMinValue = freeTrainingWindowDeltas.min()
     }
 
-    private func downsampleFreeTrainingSamples(_ samples: [Double], maxPoints: Int = 120) -> [Double] {
+    private func downsampleFreeLegacyTrainingSamples(_ samples: [Double], maxPoints: Int = 120) -> [Double] {
         guard !samples.isEmpty, samples.count > maxPoints else { return samples }
         let step = Double(samples.count - 1) / Double(maxPoints - 1)
         return (0..<maxPoints).map { index in

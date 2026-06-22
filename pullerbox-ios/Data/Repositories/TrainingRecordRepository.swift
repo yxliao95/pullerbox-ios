@@ -7,19 +7,11 @@ final class TrainingRecordRepository: TrainingRecordRepositoryProtocol {
         self.store = store
     }
 
-    func loadTimedRecords() async -> [TrainingRecord] {
-        await store.loadTimedRecords() ?? []
+    func loadRecords() async -> [TrainingRecord] {
+        await store.loadRecords() ?? []
     }
 
-    func saveTimedRecords(_ records: [TrainingRecord]) async {
-        await store.saveTimedRecords(records)
-    }
-
-    func loadFreeRecords() async -> [FreeTrainingRecord] {
-        await store.loadFreeRecords() ?? []
-    }
-
-    func saveFreeRecords(_ records: [FreeTrainingRecord]) async {
-        await store.saveFreeRecords(records)
+    func saveRecords(_ records: [TrainingRecord]) async {
+        await store.saveRecords(records)
     }
 }

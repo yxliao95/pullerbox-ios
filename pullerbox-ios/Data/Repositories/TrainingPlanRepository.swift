@@ -8,7 +8,7 @@ final class TrainingPlanRepository: TrainingPlanRepositoryProtocol {
     }
 
     func loadLibrary() async -> TrainingPlanLibrarySnapshot {
-        await store.loadLibrary() ?? .default
+        await store.loadLibrary() ?? .empty
     }
 
     func saveLibrary(_ snapshot: TrainingPlanLibrarySnapshot) async {
