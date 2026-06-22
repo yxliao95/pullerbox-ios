@@ -2,14 +2,6 @@
 
 本文档整理 TrainingPlan 相关的稳定设计口径，面向产品、设计和开发协作使用。用户从哪里进入、训练中如何流转见 `02-user-flow.md`；训练结果如何计算力量指标见 `04-training-metric.md`。
 
-依据：
-
-- `01-architecture.md`
-- `02-user-flow.md`
-- `04-training-metric.md`
-- `plans/finished.md`
-- `plans/todo.md`
-
 ## 成功标准
 
 训练计划应帮助用户把可复用动作组织成一套可执行、可保存、可复现的训练内容。
